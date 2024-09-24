@@ -4,6 +4,8 @@ from typing import List, Tuple
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, QuantileTransformer
+from imblearn.over_sampling import SMOTE
+from sklearn.neighbors import NearestNeighbors
 
 
 def march_split(df, val_size=0.2, random_state=42):
@@ -20,6 +22,7 @@ def march_split(df, val_size=0.2, random_state=42):
 def preprocess(
     x_train: pd.DataFrame,
     x_valid: pd.DataFrame,
+    strategy='median': str
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     주어진 훈련, 검증 데이터셋에 대해
@@ -28,6 +31,7 @@ def preprocess(
     Parameters:
     x_train (DataFrame): 훈련 데이터셋
     x_valid (DataFrame): 검증 데이터셋
+    strategy (str): 결측치 처리 방법
 
     Returns:
     Tuple[DataFrame, DataFrame]: 전처리된 훈련, 검증 데이터셋
@@ -37,6 +41,7 @@ def preprocess(
     x_train_processed, x_valid_processed = preprocess(
     x_train,
     x_valid,
+    strategy
     )
     """
     tmp_x_train = x_train.copy()
@@ -46,7 +51,7 @@ def preprocess(
     tmp_x_valid.reset_index(drop=True, inplace=True)
 
     # 결측치 처리 median으로
-    imputer = SimpleImputer(strategy="median")
+    imputer = SimpleImputer(strategy=strategy)
     tmp_x_train = pd.DataFrame(imputer.fit_transform(tmp_x_train), columns=tmp_x_train.columns)
     tmp_x_valid = pd.DataFrame(imputer.transform(tmp_x_valid), columns=tmp_x_valid.columns)
 
@@ -56,6 +61,43 @@ def preprocess(
     tmp_x_valid = pd.DataFrame(scaler.transform(tmp_x_valid), columns=tmp_x_valid.columns)
 
     return tmp_x_train, tmp_x_valid
+
+
+def preprocess_full(
+    x_train: pd.DataFrame,
+    strategy='median': str
+) -> pd.DataFrame:
+    """
+    주어진 훈련 데이터셋에 대해
+    결측치 처리, 스케일링을 수행합니다.
+
+    Parameters:
+    x_train (DataFrame): 훈련 데이터셋
+    strategy (str): 결측치 처리 방법
+
+    Returns:
+    DataFrame: 전처리된 훈련, 검증 데이터셋
+
+
+    사용 예시
+    x_train_processed = preprocess(
+    x_train,
+    strategy
+    )
+    """
+    tmp_x_train = x_train.copy()
+
+    tmp_x_train.reset_index(drop=True, inplace=True)
+
+    # 결측치 처리 median으로
+    imputer = SimpleImputer(strategy=strategy)
+    tmp_x_train = pd.DataFrame(imputer.fit_transform(tmp_x_train), columns=tmp_x_train.columns)
+
+    # 스케일링 평균 0 분산 1인 정규화
+    scaler = StandardScaler()
+    tmp_x_train = pd.DataFrame(scaler.fit_transform(tmp_x_train), columns=tmp_x_train.columns)
+
+    return tmp_x_train
 
 
 def quantile_transform(
@@ -97,3 +139,61 @@ def quantile_transform(
     tmp_x_valid[quantile_columns] = qt.transform(tmp_x_valid[quantile_columns])
 
     return tmp_x_train, tmp_x_valid
+
+
+class TSMOTE:
+    def __init__(self, k_neighbors=5, window_size=24):
+        self.k = k_neighbors
+        self.window_size = window_size
+        self.smote = SMOTE(k_neighbors=k_neighbors)
+
+    def fit_resample(self, X, y):
+        # 시간 정보 추출
+        times = X.index
+        
+        # 특성 데이터 정규화
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+        
+        # 시간 정보를 특성에 추가
+        X_with_time = np.column_stack([X_scaled, times.astype(int) / 10**9])
+        
+        # 슬라이딩 윈도우 적용
+        X_windowed, y_windowed = self._create_windows(X_with_time, y)
+        
+        # SMOTE 적용
+        X_resampled, y_resampled = self.smote.fit_resample(X_windowed, y_windowed)
+        
+        # 윈도우 형태에서 원래 시계열 형태로 변환
+        X_final, y_final = self._reconstruct_timeseries(X_resampled, y_resampled)
+        
+        # 스케일링 복원 및 시간 정보 재구성
+        X_final_descaled = scaler.inverse_transform(X_final[:, :-1])
+        times_final = pd.to_datetime(X_final[:, -1] * 10**9)
+        
+        # 결과 데이터프레임 생성
+        result_df = pd.DataFrame(X_final_descaled, columns=X.columns)
+        result_df['date'] = times_final
+        result_df.set_index('date', inplace=True)
+        
+        return result_df, y_final
+
+    def _create_windows(self, X, y):
+        X_windowed, y_windowed = [], []
+        for i in range(len(X) - self.window_size + 1):
+            X_windowed.append(X[i:i+self.window_size].flatten())
+            y_windowed.append(y[i+self.window_size-1])
+        return np.array(X_windowed), np.array(y_windowed)
+
+    def _reconstruct_timeseries(self, X_windowed, y_windowed):
+        feature_count = X_windowed.shape[1] // self.window_size
+        X_reconstructed = []
+        y_reconstructed = []
+        for i in range(len(X_windowed)):
+            if i == 0:
+                X_reconstructed.extend(X_windowed[i].reshape(self.window_size, feature_count))
+                y_reconstructed.extend([y_windowed[i]] * self.window_size)
+            else:
+                X_reconstructed.append(X_windowed[i][-feature_count:])
+                y_reconstructed.append(y_windowed[i])
+        return np.array(X_reconstructed), np.array(y_reconstructed)
