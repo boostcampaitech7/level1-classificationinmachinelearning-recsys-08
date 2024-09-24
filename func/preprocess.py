@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import List, Tuple, str
+from typing import List, Tuple
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, QuantileTransformer
@@ -154,7 +154,7 @@ class TSMOTE:
     def __init__(self, k_neighbors=5, window_size=24):
         self.k = k_neighbors
         self.window_size = window_size
-        self.smote = SMOTE(k_neighbors=k_neighbors)
+        self.smote = SMOTE(k_neighbors=k_neighbors, random_state=42)
 
     def fit_resample(self, X, y):
         # 시간 정보 추출
