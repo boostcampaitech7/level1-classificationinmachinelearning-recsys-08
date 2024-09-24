@@ -50,10 +50,15 @@ def preprocess(
     tmp_x_train.reset_index(drop=True, inplace=True)
     tmp_x_valid.reset_index(drop=True, inplace=True)
 
-    # 결측치 처리 median으로
-    imputer = SimpleImputer(strategy=strategy)
-    tmp_x_train = pd.DataFrame(imputer.fit_transform(tmp_x_train), columns=tmp_x_train.columns)
-    tmp_x_valid = pd.DataFrame(imputer.transform(tmp_x_valid), columns=tmp_x_valid.columns)
+    # 결측치 처리
+    if strategy in ['bfill', 'ffill']:
+        opposite = 'ffill' if strategy == 'bfill' else 'bfill'
+        tmp_x_train = tmp_x_train.fillna(method=strategy).fillna(method=opposite)
+        tmp_x_valid = tmp_x_valid.fillna(method=strategy).fillna(method=opposite)
+    else:
+        imputer = SimpleImputer(strategy=strategy)
+        tmp_x_train = pd.DataFrame(imputer.fit_transform(tmp_x_train), columns=tmp_x_train.columns)
+        tmp_x_valid = pd.DataFrame(imputer.transform(tmp_x_valid), columns=tmp_x_valid.columns)
 
     # 스케일링 평균 0 분산 1인 정규화
     scaler = StandardScaler()
@@ -89,9 +94,13 @@ def preprocess_full(
 
     tmp_x_train.reset_index(drop=True, inplace=True)
 
-    # 결측치 처리 median으로
-    imputer = SimpleImputer(strategy=strategy)
-    tmp_x_train = pd.DataFrame(imputer.fit_transform(tmp_x_train), columns=tmp_x_train.columns)
+    # 결측치 처리
+    if strategy in ['bfill', 'ffill']:
+        opposite = 'ffill' if strategy == 'bfill' else 'bfill'
+        tmp_x_train = tmp_x_train.fillna(method=strategy).fillna(method=opposite)
+    else:
+        imputer = SimpleImputer(strategy=strategy)
+        tmp_x_train = pd.DataFrame(imputer.fit_transform(tmp_x_train), columns=tmp_x_train.columns)
 
     # 스케일링 평균 0 분산 1인 정규화
     scaler = StandardScaler()
