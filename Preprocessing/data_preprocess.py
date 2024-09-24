@@ -1,6 +1,6 @@
 import numpy as np
 import pandas as pd
-from typing import List, Tuple
+from typing import List, Tuple, str
 from sklearn.model_selection import train_test_split
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler, QuantileTransformer
@@ -22,7 +22,7 @@ def march_split(df, val_size=0.2, random_state=42):
 def preprocess(
     x_train: pd.DataFrame,
     x_valid: pd.DataFrame,
-    strategy='median': str
+    strategy='median'
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """
     주어진 훈련, 검증 데이터셋에 대해
@@ -65,7 +65,7 @@ def preprocess(
 
 def preprocess_full(
     x_train: pd.DataFrame,
-    strategy='median': str
+    strategy='median'
 ) -> pd.DataFrame:
     """
     주어진 훈련 데이터셋에 대해
