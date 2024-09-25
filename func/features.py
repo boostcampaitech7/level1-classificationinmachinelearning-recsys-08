@@ -20,6 +20,28 @@ def make_baseline_extra(df):
     return df
 
 
+def make_shift_feature(
+    df: pd.DataFrame,
+    conti_cols: List[str],
+    intervals: List[int],
+) -> List[pd.Series]:
+    """
+    연속형 변수의 shift feature 생성
+    Args:
+        df (pd.DataFrame)
+        conti_cols (List[str]): continuous colnames
+        intervals (List[int]): shifted intervals
+    Return:
+        List[pd.Series]
+    """
+    df_shift_dict = [
+        df[conti_col].shift(interval).rename(f"{conti_col}_{interval}")
+        for conti_col in conti_cols
+        for interval in intervals
+    ]
+    return df_shift_dict
+
+
 # 지수 이동 평균
 def make_EMA(df: pd.DataFrame, col: List[str], span=2) -> pd.DataFrame:
     """
