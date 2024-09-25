@@ -4,13 +4,30 @@ from typing import List, Tuple
 import pywt
 
 
+# 게시글에 있는 베이스라인 코드의 피처 엔지니어링 부분과 동일 
+# (eda 에서 파악한 차이와 차이의 음수, 양수 여부를 새로운 피쳐로 생성)
+def make_baseline_extra(df): 
+
+    df = df.assign(
+    liquidation_diff=df["liquidations_all_exchange_all_symbol_long_liquidations"] - df["liquidations_all_exchange_all_symbol_short_liquidations"],
+    liquidation_usd_diff=df["liquidations_all_exchange_all_symbol_long_liquidations_usd"] - df["liquidations_all_exchange_all_symbol_short_liquidations_usd"],
+    volume_diff=df["taker-buy-sell-stats_all_exchange_taker_buy_volume"] - df["taker-buy-sell-stats_all_exchange_taker_sell_ratio"],
+    liquidation_diffg=np.sign(df["liquidations_all_exchange_all_symbol_long_liquidations"] - df["liquidations_all_exchange_all_symbol_short_liquidations"]),
+    liquidation_usd_diffg=np.sign(df["liquidations_all_exchange_all_symbol_long_liquidations_usd"] - df["liquidations_all_exchange_all_symbol_short_liquidations_usd"]),
+    volume_diffg=np.sign(df["taker-buy-sell-stats_all_exchange_taker_buy_volume"] - df["taker-buy-sell-stats_all_exchange_taker_sell_ratio"]),
+    buy_sell_volume_ratio=df["taker-buy-sell-stats_all_exchange_taker_buy_volume"] / (df["taker-buy-sell-stats_all_exchange_taker_sell_ratio"] + 1))
+
+    return df
+
+
 # 지수 이동 평균
 def make_EMA(df: pd.DataFrame, col: List[str], span=2) -> pd.DataFrame:
     """
     지수 이동 평균을 새로운 피처로 추가.
     Args:
         df (pd.DataFrame): 데이터를 포함한 데이터프레임.
-        date_column (str): 지수 이동 평균 피처를 추가하고자 하는 열 이름 목록.
+        col (List[str]): 지수 이동 평균 피처를 추가하고자 하는 열 이름 목록.
+        span (int): 지수 이동 평균의 기간. 기본값은 2.
     Returns:
         pd.DataFrame: 지수 이동 평균 피처가 추가된 컬럼들의 데이터프레임 반환.
     """
@@ -19,6 +36,16 @@ def make_EMA(df: pd.DataFrame, col: List[str], span=2) -> pd.DataFrame:
 
 # Wavlet Transform
 def make_WT(df: pd.DataFrame, col: List[str], wavelet='db5', th=0.6) -> pd.DataFrame:
+    """
+    Wavelet Transform을 적용하는 함수
+    Args:
+        df (pd.DataFrame): 데이터를 포함한 데이터프레임
+        col (str): Wavelet Transform을 적용할 열 이름
+        wavelet (str): 사용할 웨이블릿 유형. 기본값은 'db5'
+        th (float): 임계값 계수. 기본값은 0.6
+    Returns:
+        np.ndarray: Wavelet Transform이 적용된 신호
+    """
     signal = df[col].values
     th = th*np.nanmax(signal)
     coef = pywt.wavedec(signal, wavelet, mode="per" )
