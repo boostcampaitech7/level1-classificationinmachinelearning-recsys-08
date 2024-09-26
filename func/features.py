@@ -286,6 +286,9 @@ def make_multiple_rolling(df, exclude_columns_list):
 
     for col in df.columns:
         if col not in exclude_columns_list:
+            if df[col].dtype == 'object' or isinstance(df[col].iloc[0], (list, np.ndarray)):
+                print(f"Skipping column '{col}' as it contains non-numeric data.")
+                continue
             for window in [6, 12, 24, 48]:
                 new_col_name = f'{col}_rolling_mean_{window}h'
                 rolling_features[new_col_name] = df[col].rolling(window=window).mean()
