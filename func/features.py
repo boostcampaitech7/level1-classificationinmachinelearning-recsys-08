@@ -20,7 +20,7 @@ def make_baseline_extra(df):
     return df
 
 
-def make_shift_feature(
+def make_shift(
     df: pd.DataFrame,
     conti_cols: List[str],
     intervals: List[int],
@@ -265,4 +265,37 @@ def make_supply_change_rate(
         pd.DataFrame: 공급 변화율을 저장한 새로운 열이 추가된 데이터프레임
     """
     df['supply_change_rate'] = df[new_supply_col] / (df[total_supply_col] + 1e-6)  # 분모가 0이 되는 것을 방지하기 위해 작은 값을 더함
+    return df
+
+
+def make_multiple_rolling(df, exclude_columns_list):
+    """
+    여러 윈도우 크기(6, 12, 24, 48)로 이동평균 피처를 생성하는 함수
+    
+    Parameters:
+    - df: 입력 데이터프레임
+    - exclude_columns_list: 이동평균을 적용하지 않을 열 이름이 담긴 리스트
+    
+    Returns:
+    - 이동평균 피처가 추가된 데이터프레임
+    """
+    rolling_features = {}
+
+    # 윈도우 크기별로 변수명 리스트 생성
+    rolling_columns_dict = {window: [] for window in [6, 12, 24, 48]}
+
+    for col in df.columns:
+        if col not in exclude_columns_list:
+            if df[col].dtype == 'object' or isinstance(df[col].iloc[0], (list, np.ndarray)):
+                print(f"Skipping column '{col}' as it contains non-numeric data.")
+                continue
+            for window in [6, 12, 24, 48]:
+                new_col_name = f'{col}_rolling_mean_{window}h'
+                rolling_features[new_col_name] = df[col].rolling(window=window).mean()
+                # 윈도우 크기에 맞는 리스트에 변수명 저장
+                rolling_columns_dict[window].append(new_col_name)
+
+    # 새로운 피처를 한 번에 추가
+    rolling_features_df = pd.DataFrame(rolling_features, index=df.index)
+    df = pd.concat([df, rolling_features_df], axis=1)
     return df
