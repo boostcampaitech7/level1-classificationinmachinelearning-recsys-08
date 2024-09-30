@@ -32,7 +32,7 @@
 
 ## 💻 개발 환경
 - **IDE**: VSCode, Google Colab
-- **작업 환경**: fhzjf, Google Colab, 원격 GPU 서버
-- **실험 관리**: Notion Teamspace (마일스콘 정리 및 그라운드 룰 관리)
+- **작업 환경**: 로컬, Google Colab, 원격 GPU 서버
+- **실험 관리**: Notion Teamspace (마일스톤 정리 및 그라운드 룰 관리)
 
 
